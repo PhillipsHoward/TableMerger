@@ -25,9 +25,13 @@
 
 ## Configuration :
 Modify theses constants at the beginning of the script for customization.
+
    - BASE_FILENAME (str) : The name of the base file. CSV format is required here, with ";" separators.
+   
    - INPUT_FILENAME (str) : The name of the input file. CSV format is required here, with ";" separators 
+   
    - OUTPUT_FILENAME (str) : The name you want for your output table.
+   
    - ALL_FIELDS_SELECTED_BY_DEFAULT (bool) : When set to True, all fields from the input base are by default selected into the menu. (you can still unselect them after)   
     
    - DEPTH_WITHIN_RANGE_CONFIG (dict) : 
