@@ -10,12 +10,7 @@ import time
 import sqlite3
 
 
-'''
-README : https://github.com/PhillipsHoward/TableMerger
-
-'''
-
-
+# README /!\ : https://github.com/PhillipsHoward/TableMerger
 
 BASE_FILENAME = "SWINGS_CTD_clean_nut.csv"
 INPUT_FILENAME = "swings_ctd_completed_O2.csv"
@@ -47,7 +42,7 @@ JOIN_FIELDS_CONFIGURATION = [
 
 
 def extract_potentials_fields_to_add_from_input(input_data):
-    """Extract from input_data the potential fields to append to base. Format it into a clean dict"""
+    """ Extract from input_data the potential fields to append to base. """
     return input_data.columns.values.tolist().copy()[  # TODO This should not stay hardcoded like that
         1:
     ]
@@ -55,8 +50,8 @@ def extract_potentials_fields_to_add_from_input(input_data):
 
 def generate_selection_menu(all_fields, all_selected=False):
     """
-    Let the user chose the fields to append into base_data
-    Sorry for this dirty function. This should be refactored someday.
+    Create a menu that let the user choose the fields from the input table to add to the base table.
+    ( Sorry for this dirty function. This should be refactored someday. )
     """
     print("Select the fields to append from the new input matrix to the reference one.")
 
@@ -79,7 +74,7 @@ def generate_selection_menu(all_fields, all_selected=False):
         print(str(exit_index), "--", "VALIDATE")
 
     def reorder_fields(selected_fields, all_fields):
-        """Reorder selected fields into the original matrix order"""
+        """ Reorder selected fields into the original input table order """
         ordered_fields = []
         for field in all_fields:
             if field in selected_fields:
@@ -114,6 +109,27 @@ def generate_selection_menu(all_fields, all_selected=False):
 
 
 class DataTablesMerger:
+    '''
+    A class that merges two data tables based on common fields.
+
+    :param base_data: The base data table to which the input data table will be joined.
+    :type base_data: pandas.DataFrame
+    :param input_data: The input data table to be joined to the base data table.
+    :type input_data: pandas.DataFrame
+    :param fields_to_append_list: The list of fields from the input data table to append to the base data table.
+    :type fields_to_append_list: list of str
+    :param join_fields_configuration: The configuration of the join fields between the two tables.
+    :type join_fields_configuration: list of dict (see README for format example)
+    :ivar pre_query_select_parts: The list of select query parts that will be added to the main join query.
+    :type pre_query_select_parts: list of str
+    :ivar pre_query_join_parts: The list of join query parts that will be added to the main join query.
+    :type pre_query_join_parts: list of str
+    :ivar join_fields_name_list: The list of fields names used to establish the join. 
+    :type join_fields_name_list: list of str
+    :ivar start_time: The time at which the merge process started.
+    :type start_time: float
+    '''
+    
     def __init__(
         self,
         base_data,
@@ -230,8 +246,9 @@ class DataTablesMerger:
                 else f"input_data.'{field}' AS '{field}_input'"
                 for field in self.fields_to_append_list
             ]
-        )  # We add suffixe "_input" only for fields that are used as join fields,
-        # because otherwise they would lead to falsy ambivalent row deletions. (see "drop_ambivalent_matching_rows()")
+        )  
+        """ We add suffixe "_input" for fields that are used as join fields,
+        otherwise they would lead to falsy ambivalent row deletions. (see "drop_ambivalent_matching_rows()")"""
         join_query_section = " AND ".join(self.pre_query_join_parts)
 
         query = f"""
