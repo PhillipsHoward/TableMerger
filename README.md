@@ -2,26 +2,36 @@
 
 ## What it does :
    - This script takes 2 csv tables : a base table and an input table.
+   
    - It takes a selection of columns (fields) from the input table, and appends their data to the base table.
         (So at his core, this script just builds a simple SQL "LEFT JOIN")
+       
    - It returns the result in an output csv, without altering the two original files.
+   
    - Only rows from the input table that match a certain amount of configurables conditions are appended to the base table :
         remanining, non-matching data is not kept.
+     
    - All rows from the base table are preserved : they are just completed with the right data from the input table.
+   
    - If two or more rows from the input data match the same row from the base data, the script just keeps the first and ditches the others.
         (The number of such deleted "ambivalents rows" is logged in the end of the execution.)
 
 ## Tetchnical setup : 
-   -You must have python 3 installed on your machine, or in your python env if you use one (> 3.10 preferably)
-   -You also need to install the package pandas, by typing "pip install pandas" into your machine prompt. ("cmd" terminal on Windows)
-   -The previous instruction will only work if you have not installed pip yet.
+   - You must have python 3 installed on your machine, or in your python env if you use one (> 3.10 preferably)
+   
+   - You also need to install the package pandas, by typing "pip install pandas" into your machine prompt. ("cmd" terminal on Windows)
+   
+   - The previous instruction will only work if you have not installed pip yet.
        If it's not the case : install it. (Check these instructions on windows https://phoenixnap.com/kb/install-pip-windows )
 
 ## Instructions :
-   -This script must be executed within the same directory as the base and input data files. (Just execute "python table_merger.py", or run it on something like spyder)
-   -The output data file will be writen within the same directory.
-   -CSV files must not be opened in other softwares like excel, for example. (This can lead to concurrency error)
-   -At launch, a "menu" allows you yo choose which columns from the input data you want to append to the base data. (this is clearly the dirtiest part of the code, please don't look at it) 
+   - This script must be executed within the same directory as the base and input data files. (Just execute "python table_merger.py", or run it on something like spyder)
+   
+   - The output data file will be writen within the same directory.
+   
+   - CSV files must not be opened in other softwares like excel, for example. (This can lead to concurrency error)
+   
+   - At launch, a "menu" allows you yo choose which columns from the input data you want to append to the base data. (this is clearly the dirtiest part of the code, please don't look at it) 
 
 ## Configuration :
 Modify theses constants at the beginning of the script for customization.
