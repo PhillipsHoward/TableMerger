@@ -15,7 +15,7 @@ import sqlite3
 BASE_FILENAME = "SWINGS_CTD_clean_nut.csv"
 INPUT_FILENAME = "swings_ctd_completed_O2.csv"
 OUTPUT_FILENAME = "output.txt"
-ALL_FIELDS_SELECTED_BY_DEFAULT = False
+ALL_FIELDS_SELECTED_BY_DEFAULT = True
 DEPTH_WITHIN_RANGE_CONFIG = {
     "defaultMarginValue": 0.8,
     "alwaysUseDefaultValue": True,
@@ -42,7 +42,7 @@ JOIN_FIELDS_CONFIGURATION = [
 
 
 def extract_potentials_fields_to_add_from_input(input_data):
-    """ Extract from input_data the potential fields to append to base. """
+    """Extract from input_data the potential fields to append to base."""
     return input_data.columns.values.tolist().copy()[  # TODO This should not stay hardcoded like that
         1:
     ]
@@ -74,7 +74,7 @@ def generate_selection_menu(all_fields, all_selected=False):
         print(str(exit_index), "--", "VALIDATE")
 
     def reorder_fields(selected_fields, all_fields):
-        """ Reorder selected fields into the original input table order """
+        """Reorder selected fields into the original input table order"""
         ordered_fields = []
         for field in all_fields:
             if field in selected_fields:
@@ -109,7 +109,7 @@ def generate_selection_menu(all_fields, all_selected=False):
 
 
 class DataTablesMerger:
-    '''
+    """
     A class that merges two data tables based on common fields.
 
     :param base_data: The base data table to which the input data table will be joined.
@@ -124,12 +124,12 @@ class DataTablesMerger:
     :type pre_query_select_parts: list of str
     :ivar pre_query_join_parts: The list of join query parts that will be added to the main join query.
     :type pre_query_join_parts: list of str
-    :ivar join_fields_name_list: The list of fields names used to establish the join. 
+    :ivar join_fields_name_list: The list of fields names used to establish the join.
     :type join_fields_name_list: list of str
     :ivar start_time: The time at which the merge process started.
     :type start_time: float
-    '''
-    
+    """
+
     def __init__(
         self,
         base_data,
@@ -137,8 +137,8 @@ class DataTablesMerger:
         fields_to_append_list,
         join_fields_configuration,
     ):
-        self.base_data = base_data
-        self.input_data = input_data
+        self.base_data: pd.DataFrame = base_data
+        self.input_data: pd.DataFrame = input_data
         self.fields_to_append_list = fields_to_append_list
         self.join_fields_configuration = join_fields_configuration
         self.pre_query_select_parts = []
@@ -185,13 +185,12 @@ class DataTablesMerger:
                 ),
                 axis=1,
             )
-        self.input_data[min_limit_column_name] = self.input_data.apply(
-            lambda row: row[field_in_input] - row[marg_of_error_column_name],
-            axis=1,
+        # Gain de 2 sec en utilisant pas de apply ici ;)
+        self.input_data[min_limit_column_name] = (
+            self.input_data[field_in_input] - self.input_data[marg_of_error_column_name]
         )
-        self.input_data[max_limit_column_name] = self.input_data.apply(
-            lambda row: row[field_in_input] + row[marg_of_error_column_name],
-            axis=1,
+        self.input_data[max_limit_column_name] = (
+            self.input_data[field_in_input] + self.input_data[marg_of_error_column_name]
         )
 
     def write_within_range_conditions(self, field_in_base, field_in_input):
@@ -203,7 +202,6 @@ class DataTablesMerger:
     def setup_one_within_range_join(
         self, field_in_base, field_in_input, join_within_range_config
     ):
-
         self.add_helpers_columns_for_join_within_range_field(
             field_in_input=field_in_input,
             join_within_range_config=join_within_range_config,
@@ -246,7 +244,7 @@ class DataTablesMerger:
                 else f"input_data.'{field}' AS '{field}_input'"
                 for field in self.fields_to_append_list
             ]
-        )  
+        )
         """ We add suffixe "_input" for fields that are used as join fields,
         otherwise they would lead to falsy ambivalent row deletions. (see "drop_ambivalent_matching_rows()")"""
         join_query_section = " AND ".join(self.pre_query_join_parts)
@@ -260,14 +258,36 @@ class DataTablesMerger:
         return query
 
     def join_tables(self, join_query):
-        conn = sqlite3.connect("TheBlattabase")
-        self.base_data.to_sql("base_data", conn, index=False, if_exists="replace")
-        self.input_data.to_sql("input_data", conn, index=False, if_exists="replace")
-        raw_data = pd.read_sql_query(join_query, conn)
-        return raw_data
+        # Supprimer les lignes si valeurs manquantes
+        self.base_data.dropna(subset=["Station", "Depth [m]"], inplace=True)
+        self.input_data.dropna(subset=["Station", "Depth [m]"], inplace=True)
+
+        # Dans input_data, station est un float alors que dans base_data c'est un str car il y a des stations type "33_A",
+        # il faut le meme type de colonne dans les deux
+        self.input_data["Station"] = (
+            self.input_data["Station"].astype("int").astype("str")
+        )
+
+        # merge_asof attends des df triés sur la clause "on"
+        self.base_data.sort_values(by=["Depth [m]"], inplace=True)
+        self.input_data.sort_values(by=["Depth [m]"], inplace=True)
+
+        raw_data = pd.merge_asof(
+            left=self.base_data,
+            right=self.input_data[self.fields_to_append_list],
+            by=["Station"],
+            on="Depth [m]",  # Seulement 1 colonne possible ici :/
+            direction="nearest",
+            tolerance=0.8,  # Seulement 1 tolerance possible ici :/
+            suffixes=["", "_input"],
+        )
+
+        return raw_data.sort_values(
+            ["Station", "Depth [m]"]
+        )  # Pas forcément nécessaire
 
     def drop_ambivalent_matching_rows(self, data):
-
+        # Plus vraiment nécessaire avec le merge_asof
         initial_rows_number = len(data.index)
         cleaned_data = data.drop_duplicates(
             subset=self.join_fields_name_list, keep="first"
@@ -331,4 +351,3 @@ def main():
 
 
 main()
-
